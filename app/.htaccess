@@ -1,0 +1,18 @@
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
+# Blocca l'accesso diretto a configurazione e file interni
+<FilesMatch "^(config\.php|config\.sample\.php|.*\.sql|.*\.md)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  <FilesMatch "sw\.js$">
+    Header set Cache-Control "no-cache"
+    Header set Service-Worker-Allowed "./"
+  </FilesMatch>
+</IfModule>
