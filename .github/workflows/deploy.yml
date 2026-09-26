@@ -1,0 +1,49 @@
+name: Deploy VPS
+
+# Pubblica l'app su /var/www/html/presenze della VPS.
+# Al primo avvio installa Apache/PHP/MariaDB, crea il database e config.php.
+# Secret richiesti: VPS_HOST, VPS_USER, VPS_SSH_KEY (opzionale: VPS_PORT, default 22).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - app/**
+      - deploy/**
+      - .github/workflows/deploy.yml
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Controllo sintassi PHP
+        run: |
+          find app -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+          bash -n deploy/server-setup.sh
+
+      - name: Carica i file sulla VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "app,deploy"
+          target: "presenze-deploy"
+          rm: true
+
+      - name: Installa e aggiorna l'app
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 20m
+          script: bash ~/presenze-deploy/deploy/server-setup.sh
